@@ -21,6 +21,7 @@ __all__ = [
     'FilterSkeleton',
     'Filter_external',
     'Filter_classifier',
+    'Filter_headers'
     'Filter_TMDA',
 ]
 
@@ -295,6 +296,34 @@ class Filter_classifier(Filter_external):
             msg.add_header('X-getmail-filter-classifier', line)
         return (child.exitcode, msg, child.err)
 
+#######################################
+class Filter_headers(Filter_external):
+    '''Filter which runs the message through an external command, adding the
+    command's output to the mail's headers.  Takes the same parameters as
+    Filter_external.  If the command prints nothing, no header fields are
+    added.
+    '''
+    def __str__(self):
+        self.log.trace()
+        return 'Filter_header %s (%s)' % (self.conf['command'],
+                                              self._confstring())
+
+    def showconf(self):
+        self.log.trace()
+        self.log.info('Filter_header(%s)\n' % self._confstring())
+
+    def _filter_message(self, msg):
+        child = self._filter_message_common(msg)
+        self.log.debug('command %s %d exited %d\n' % (
+            self.conf['command'], child.childpid, child.exitcode))
+        for line in [line.strip() for line in child.stdout.readlines()
+                     if line.strip()]:
+            print(line)
+            header, value = line.split(": ", 1)
+            msg.add_header(header.encode(), value.encode())
+        return (child.exitcode, msg, child.err)
+
+    
 #######################################
 class Filter_TMDA(FilterSkeleton, ForkingBase):
     '''Filter which runs the message through TMDA's tmda-filter program
